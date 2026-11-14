@@ -1,0 +1,430 @@
+<!DOCTYPE html>
+<html lang="cs">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-title" content="Čistá fotka">
+<meta name="theme-color" content="#14181d">
+<title>Čistá fotka</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Bricolage+Grotesque:opsz,wght@12..96,600;12..96,800&family=Instrument+Sans:wght@400;500;600&display=swap" rel="stylesheet">
+<style>
+:root {
+  /* Layout: one narrow column, sized for a phone. Controls on top, result below. */
+  --bg: #14181d;
+  --panel: #1d232a;
+  --line: #2f3842;
+  --text: #eef1f4;
+  --muted: #94a0ad;
+  --accent: #ff6b4a;
+  --accent-ink: #1a0d08;
+  --bad: #ff9a8a;
+  --display: "Bricolage Grotesque", "Arial Narrow", system-ui, sans-serif;
+  --body: "Instrument Sans", system-ui, -apple-system, "Segoe UI", sans-serif;
+  color-scheme: dark;
+}
+* { box-sizing: border-box; }
+html, body { margin: 0; }
+body {
+  background: var(--bg); color: var(--text);
+  font: 400 16px/1.45 var(--body);
+  -webkit-font-smoothing: antialiased;
+}
+main { max-width: 520px; margin: 0 auto; padding: 16px 16px 48px; display: flex; flex-direction: column; gap: 20px; }
+header { display: flex; align-items: center; justify-content: space-between; gap: 12px; padding-top: 4px; }
+h1 { font: 800 26px/1 var(--display); margin: 0; letter-spacing: -0.01em; }
+h1 span { color: var(--accent); }
+h2 { font: 600 13px/1.2 var(--body); margin: 0 0 8px; color: var(--muted); text-transform: uppercase; letter-spacing: 0.08em; }
+p { margin: 0; }
+.muted { color: var(--muted); font-size: 14px; }
+button, .btn { font: 600 15px/1 var(--body); color: var(--text); background: var(--panel); border: 1px solid var(--line); border-radius: 10px; padding: 12px 14px; cursor: pointer; }
+button:focus-visible, input:focus-visible, select:focus-visible, label.drop:focus-within { outline: 2px solid var(--accent); outline-offset: 2px; }
+button.primary { background: var(--accent); color: var(--accent-ink); border-color: var(--accent); padding: 16px; font-size: 17px; width: 100%; }
+button:disabled { opacity: 0.45; cursor: not-allowed; }
+.icon-btn { padding: 10px 12px; font-size: 14px; }
+
+label.drop {
+  display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 6px;
+  border: 1.5px dashed var(--line); border-radius: 14px; padding: 28px 16px; text-align: center;
+  background: var(--panel); cursor: pointer;
+}
+label.drop strong { font: 600 17px/1.2 var(--body); }
+label.drop input { position: absolute; opacity: 0; width: 1px; height: 1px; }
+
+.chips { display: flex; flex-wrap: wrap; gap: 8px; }
+.chips label { position: relative; }
+.chips input { position: absolute; opacity: 0; inset: 0; }
+.chips span { display: block; padding: 10px 13px; border: 1px solid var(--line); border-radius: 999px; background: var(--panel); font-size: 14px; font-weight: 500; }
+.chips input:checked + span { background: var(--text); color: var(--bg); border-color: var(--text); }
+.chips input:focus-visible + span { outline: 2px solid var(--accent); outline-offset: 2px; }
+
+.thumbs { display: flex; gap: 8px; overflow-x: auto; padding-bottom: 4px; }
+.thumbs button { flex: 0 0 64px; height: 64px; padding: 0; border-radius: 10px; overflow: hidden; position: relative; background: var(--panel); }
+.thumbs button[aria-current="true"] { border-color: var(--accent); border-width: 2px; }
+.thumbs img { width: 100%; height: 100%; object-fit: cover; display: block; }
+.thumbs .state { position: absolute; right: 3px; bottom: 3px; font-size: 11px; font-weight: 600; background: rgba(20,24,29,.85); border-radius: 6px; padding: 2px 5px; }
+
+.compare { position: relative; border-radius: 14px; overflow: hidden; background: var(--panel); border: 1px solid var(--line); touch-action: pan-y; user-select: none; -webkit-user-select: none; }
+.compare img { display: block; width: 100%; height: 100%; object-fit: cover; pointer-events: none; }
+.compare .after { position: relative; }
+.compare .before { position: absolute; inset: 0; clip-path: inset(0 calc(100% - var(--pos, 50%)) 0 0); }
+.compare .handle { position: absolute; top: 0; bottom: 0; left: var(--pos, 50%); width: 2px; background: #fff; transform: translateX(-1px); }
+.compare .handle::after { content: "‹ ›"; position: absolute; top: 50%; left: 50%; transform: translate(-50%,-50%); width: 38px; height: 38px; border-radius: 50%; background: #fff; color: #14181d; font: 600 15px/38px var(--body); text-align: center; }
+.compare .tag { position: absolute; top: 10px; font-size: 12px; font-weight: 600; padding: 4px 9px; border-radius: 999px; background: rgba(20,24,29,.8); }
+.compare .tag.l { left: 10px; } .compare .tag.r { right: 10px; background: var(--accent); color: var(--accent-ink); }
+.compare input[type=range] { position: absolute; inset: 0; width: 100%; height: 100%; opacity: 0; cursor: ew-resize; margin: 0; }
+.compare.busy::after { content: "Upravuji fotku…"; position: absolute; inset: 0; display: grid; place-items: center; background: rgba(20,24,29,.6); font-weight: 600; }
+
+.row { display: flex; gap: 8px; flex-wrap: wrap; }
+.row > * { flex: 1 1 140px; }
+.error { color: var(--bad); font-size: 14px; background: #2a1c1a; border: 1px solid #5a2f28; padding: 10px 12px; border-radius: 10px; }
+[hidden] { display: none !important; }
+
+dialog { background: var(--panel); color: var(--text); border: 1px solid var(--line); border-radius: 14px; padding: 20px; width: min(92vw, 440px); }
+dialog::backdrop { background: rgba(0,0,0,.6); }
+dialog form { display: flex; flex-direction: column; gap: 14px; }
+dialog h3 { font: 800 20px/1.1 var(--display); margin: 0; }
+.field { display: flex; flex-direction: column; gap: 6px; font-size: 14px; font-weight: 500; }
+input[type=password], input[type=text], select, textarea {
+  font: 400 16px/1.3 var(--body); color: var(--text); background: var(--bg); border: 1px solid var(--line); border-radius: 10px; padding: 12px; width: 100%;
+}
+a { color: var(--accent); }
+ol { margin: 0; padding-left: 20px; display: flex; flex-direction: column; gap: 4px; }
+@media (prefers-reduced-motion: no-preference) { button, .chips span { transition: background .15s, border-color .15s; } }
+</style>
+</head>
+<body>
+<main>
+  <header>
+    <h1>Čistá <span>fotka</span></h1>
+    <button class="icon-btn" id="openSettings" type="button">Nastavení</button>
+  </header>
+
+  <section id="keyHint" hidden>
+    <p class="error">Chybí Gemini API klíč. Otevři Nastavení a vlož ho, jinak úprava nepůjde.</p>
+  </section>
+
+  <section>
+    <label class="drop" for="files">
+      <strong>Vyber fotky oblečení</strong>
+      <span class="muted">Jedna nebo víc najednou. Vyfoť kus položený naplocho.</span>
+      <input id="files" type="file" accept="image/*" multiple>
+    </label>
+  </section>
+
+  <section id="thumbsWrap" hidden>
+    <div class="thumbs" id="thumbs"></div>
+  </section>
+
+  <section>
+    <h2>Umístění</h2>
+    <div class="chips" id="placement"></div>
+  </section>
+
+  <section>
+    <h2>Podklad</h2>
+    <div class="chips" id="surface"></div>
+  </section>
+
+  <button class="primary" id="go" type="button" disabled>Upravit fotky</button>
+  <p class="error" id="err" hidden></p>
+
+  <section id="resultWrap" hidden>
+    <h2>Výsledek</h2>
+    <div class="compare" id="compare">
+      <img class="after" id="imgAfter" alt="Upravená fotka">
+      <img class="before" id="imgBefore" alt="Původní fotka">
+      <div class="handle"></div>
+      <span class="tag l">Původní</span><span class="tag r">Upravená</span>
+      <input type="range" id="slider" min="0" max="100" value="50" aria-label="Porovnání původní a upravené fotky">
+    </div>
+    <div class="row" style="margin-top:12px">
+      <button id="save" type="button">Uložit fotku</button>
+      <button id="redo" type="button">Zkusit znovu</button>
+    </div>
+  </section>
+
+  <section id="howto">
+    <h2>Jak to funguje</h2>
+    <ol class="muted">
+      <li>V Nastavení jednou vložíš svůj Gemini API klíč. Zůstane jen v tomto prohlížeči.</li>
+      <li>Vybereš fotky, umístění a podklad.</li>
+      <li>AI vymění pozadí a světlo. Samotný kus nechává, jak je, včetně vad.</li>
+    </ol>
+  </section>
+</main>
+
+<dialog id="settings">
+  <form method="dialog" id="settingsForm">
+    <h3>Nastavení</h3>
+    <label class="field" for="key">Gemini API klíč
+      <input id="key" type="password" autocomplete="off" placeholder="AIza…">
+    </label>
+    <p class="muted">Klíč zdarma založíš na <a href="https://aistudio.google.com/apikey" target="_blank" rel="noopener">aistudio.google.com/apikey</a>. Pro obrázkové modely musí mít projekt zapnuté placení.</p>
+    <label class="field" for="model">Model
+      <select id="model">
+        <option value="gemini-3.1-flash-image">Nano Banana 2 (doporučeno)</option>
+        <option value="gemini-3.1-flash-lite-image">Nano Banana 2 Lite (levnější, rychlejší)</option>
+        <option value="gemini-3-pro-image">Nano Banana Pro (nejlepší, dražší)</option>
+      </select>
+    </label>
+    <label class="field" for="extra">Vlastní pokyn navíc (nepovinné)
+      <textarea id="extra" rows="2" placeholder="např. měkké denní světlo od okna"></textarea>
+    </label>
+    <button class="primary" type="submit">Uložit</button>
+  </form>
+</dialog>
+
+<script>
+(function () {
+  "use strict";
+  var $ = function (id) { return document.getElementById(id); };
+
+  var PLACEMENTS = [
+    { id: "floor", label: "Na zemi", text: "laid flat on the floor, photographed straight from above" },
+    { id: "hanger", label: "Na ramínku", text: "hanging on a simple wooden hanger against a wall, photographed straight on" },
+    { id: "bed", label: "Na posteli", text: "laid flat on a neatly made bed, photographed straight from above" }
+  ];
+  var SURFACES = [
+    { id: "concrete", label: "Beton", text: "smooth light grey polished concrete" },
+    { id: "wood", label: "Světlé dřevo", text: "light oak wooden boards" },
+    { id: "white", label: "Bílá", text: "clean plain white surface" },
+    { id: "linen", label: "Lněná látka", text: "natural beige linen fabric" },
+    { id: "tiles", label: "Dlažba", text: "large matte light stone tiles" }
+  ];
+
+  var store = {
+    get: function (k, d) { try { var v = localStorage.getItem("cf_" + k); return v === null ? d : v; } catch (e) { return d; } },
+    set: function (k, v) { try { localStorage.setItem("cf_" + k, v); } catch (e) {} }
+  };
+
+  // One-time setup link: open the page as  …/#k=YOUR_KEY  and the key is saved here, then removed from the address.
+  try {
+    var hm = /^#k=(.+)$/.exec(location.hash || "");
+    if (hm) {
+      store.set("key", decodeURIComponent(hm[1]).trim());
+      history.replaceState(null, "", location.pathname + location.search);
+    }
+  } catch (e) {}
+
+  var state = {
+    key: store.get("key", ""),
+    model: store.get("model", "gemini-3.1-flash-image"),
+    extra: store.get("extra", ""),
+    placement: store.get("placement", "floor"),
+    surface: store.get("surface", "concrete"),
+    items: [],      // {name, before(dataURL), mime, b64, after(dataURL)|null, status, error}
+    current: -1,
+    busy: false
+  };
+
+  function chips(root, list, name) {
+    root.innerHTML = "";
+    list.forEach(function (o) {
+      var l = document.createElement("label");
+      var i = document.createElement("input");
+      i.type = "radio"; i.name = name; i.value = o.id; i.id = name + "_" + o.id;
+      i.checked = state[name] === o.id;
+      i.addEventListener("change", function () { state[name] = o.id; store.set(name, o.id); });
+      var s = document.createElement("span"); s.textContent = o.label;
+      l.appendChild(i); l.appendChild(s); root.appendChild(l);
+    });
+  }
+  chips($("placement"), PLACEMENTS, "placement");
+  chips($("surface"), SURFACES, "surface");
+
+  // ---------- settings ----------
+  function refreshKeyHint() { $("keyHint").hidden = !!state.key; }
+  $("openSettings").addEventListener("click", openSettings);
+  function openSettings() {
+    $("key").value = state.key; $("model").value = state.model; $("extra").value = state.extra;
+    $("settings").showModal();
+  }
+  $("settingsForm").addEventListener("submit", function () {
+    state.key = $("key").value.trim(); state.model = $("model").value; state.extra = $("extra").value.trim();
+    store.set("key", state.key); store.set("model", state.model); store.set("extra", state.extra);
+    refreshKeyHint();
+  });
+  refreshKeyHint();
+
+  // ---------- loading photos ----------
+  function loadImage(file) {
+    return new Promise(function (resolve, reject) {
+      var url = URL.createObjectURL(file);
+      var img = new Image();
+      img.onload = function () {
+        var max = 1536, w = img.naturalWidth, h = img.naturalHeight;
+        var k = Math.min(1, max / Math.max(w, h));
+        var c = document.createElement("canvas");
+        c.width = Math.round(w * k); c.height = Math.round(h * k);
+        c.getContext("2d").drawImage(img, 0, 0, c.width, c.height);
+        URL.revokeObjectURL(url);
+        var data = c.toDataURL("image/jpeg", 0.9);
+        resolve({ name: file.name, before: data, mime: "image/jpeg", b64: data.split(",")[1], after: null, status: "new", error: "" });
+      };
+      img.onerror = function () { URL.revokeObjectURL(url); reject(new Error("Soubor " + file.name + " nejde načíst jako obrázek.")); };
+      img.src = url;
+    });
+  }
+
+  $("files").addEventListener("change", function (e) {
+    var files = Array.prototype.slice.call(e.target.files || []);
+    if (!files.length) return;
+    showError("");
+    Promise.all(files.map(function (f) { return loadImage(f).catch(function (er) { showError(er.message); return null; }); }))
+      .then(function (list) {
+        list.filter(Boolean).forEach(function (it) { state.items.push(it); });
+        if (state.current < 0 && state.items.length) state.current = 0;
+        e.target.value = "";
+        render();
+      });
+  });
+
+  // ---------- Gemini ----------
+  function buildPrompt() {
+    var p = PLACEMENTS.filter(function (x) { return x.id === state.placement; })[0];
+    var s = SURFACES.filter(function (x) { return x.id === state.surface; })[0];
+    var base = "Edit this photo of a clothing item or accessory for a second-hand marketplace listing. " +
+      "Show the exact same item " + p.text + (state.placement === "hanger" ? ", in front of " : ", on ") + s.text + ". " +
+      "Use soft, even, natural daylight with gentle realistic shadows. Center the item, keep it fully in frame, and lay it out neatly and symmetrically with wrinkles smoothed. " +
+      "Keep the item itself completely faithful to the original: identical colour, fabric texture, print, logos, text, labels, stitching, shape and proportions. " +
+      "Do not add, remove or redraw any detail of the item, and do not hide stains, holes, fading or other wear. " +
+      "Remove everything else from the scene, including clutter, hands, feet, overlaid text and watermarks. " +
+      "Keep the same portrait orientation and aspect ratio as the input. Photorealistic phone-camera look, no text in the image.";
+    return state.extra ? base + " Additional instruction: " + state.extra : base;
+  }
+
+  function callGemini(item, version) {
+    var url = "https://generativelanguage.googleapis.com/" + version + "/models/" + encodeURIComponent(state.model) + ":generateContent";
+    var body = {
+      contents: [{ parts: [{ text: buildPrompt() }, { inline_data: { mime_type: item.mime, data: item.b64 } }] }],
+      generationConfig: { responseModalities: ["TEXT", "IMAGE"] }
+    };
+    return fetch(url, { method: "POST", headers: { "Content-Type": "application/json", "x-goog-api-key": state.key }, body: JSON.stringify(body) })
+      .then(function (r) { return r.json().catch(function () { return {}; }).then(function (j) { return { status: r.status, json: j }; }); });
+  }
+
+  function explain(status, json) {
+    var m = (json && json.error && json.error.message) || "";
+    if (status === 400 && /API key/i.test(m)) return "API klíč není platný. Zkontroluj ho v Nastavení.";
+    if (status === 401 || status === 403) return "Google klíč odmítl. Zkontroluj klíč a jestli má projekt povolený tento model. " + m;
+    if (status === 429) return "Limit nebo kredit je vyčerpaný. Zkus to za chvíli, nebo zapni placení u projektu. " + m;
+    if (status === 404) return "Model " + state.model + " pod tímto klíčem není dostupný. Vyber v Nastavení jiný.";
+    return "Chyba " + status + ". " + m;
+  }
+
+  function generate(item) {
+    return callGemini(item, "v1beta").then(function (res) {
+      if (res.status === 404) return callGemini(item, "v1");
+      return res;
+    }).then(function (res) {
+      if (res.status !== 200) throw new Error(explain(res.status, res.json));
+      var cands = res.json.candidates || [], text = "";
+      for (var i = 0; i < cands.length; i++) {
+        var parts = (cands[i].content && cands[i].content.parts) || [];
+        for (var j = 0; j < parts.length; j++) {
+          var d = parts[j].inlineData || parts[j].inline_data;
+          if (d && d.data && !parts[j].thought) return "data:" + (d.mimeType || d.mime_type || "image/png") + ";base64," + d.data;
+          if (parts[j].text && !parts[j].thought) text += parts[j].text + " ";
+        }
+      }
+      var why = (res.json.promptFeedback && res.json.promptFeedback.blockReason) || (cands[0] && cands[0].finishReason) || "";
+      throw new Error("Model nevrátil obrázek. " + (text || why || "Zkus to znovu nebo jiný model."));
+    });
+  }
+
+  function runQueue(indexes) {
+    if (state.busy) return;
+    if (!state.key) { openSettings(); return; }
+    state.busy = true; showError("");
+    var chain = Promise.resolve();
+    indexes.forEach(function (ix) {
+      chain = chain.then(function () {
+        var it = state.items[ix];
+        it.status = "busy"; it.error = ""; state.current = ix; render();
+        return generate(it).then(function (out) { it.after = out; it.status = "done"; })
+          .catch(function (e) {
+            it.status = "error";
+            it.error = (e && e.message === "Failed to fetch") ? "Nepodařilo se spojit s Googlem. Zkontroluj připojení." : (e.message || String(e));
+          })
+          .then(render);
+      });
+    });
+    chain.then(function () { state.busy = false; render(); });
+  }
+
+  $("go").addEventListener("click", function () {
+    var todo = [];
+    state.items.forEach(function (it, i) { if (it.status !== "done") todo.push(i); });
+    if (!todo.length) state.items.forEach(function (_, i) { todo.push(i); });
+    runQueue(todo);
+  });
+  $("redo").addEventListener("click", function () { if (state.current >= 0) runQueue([state.current]); });
+
+  // ---------- save ----------
+  function dataUrlToBlob(u) {
+    var p = u.split(","), mime = p[0].match(/:(.*?);/)[1], bin = atob(p[1]), a = new Uint8Array(bin.length);
+    for (var i = 0; i < bin.length; i++) a[i] = bin.charCodeAt(i);
+    return new Blob([a], { type: mime });
+  }
+  $("save").addEventListener("click", function () {
+    var it = state.items[state.current]; if (!it || !it.after) return;
+    var blob = dataUrlToBlob(it.after);
+    var ext = blob.type === "image/jpeg" ? "jpg" : "png";
+    var name = (it.name.replace(/\.[^.]+$/, "") || "fotka") + "-upravena." + ext;
+    var file = null;
+    try { file = new File([blob], name, { type: blob.type }); } catch (e) {}
+    if (file && navigator.canShare && navigator.canShare({ files: [file] })) {
+      navigator.share({ files: [file] }).catch(function () {});
+      return;
+    }
+    var a = document.createElement("a");
+    a.href = URL.createObjectURL(blob); a.download = name;
+    document.body.appendChild(a); a.click(); a.remove();
+    setTimeout(function () { URL.revokeObjectURL(a.href); }, 5000);
+  });
+
+  // ---------- render ----------
+  $("slider").addEventListener("input", function (e) { $("compare").style.setProperty("--pos", e.target.value + "%"); });
+
+  function showError(msg) { $("err").textContent = msg; $("err").hidden = !msg; }
+
+  function render() {
+    var n = state.items.length, it = state.items[state.current];
+    $("thumbsWrap").hidden = n === 0;
+    $("howto").hidden = n > 0;
+    var t = $("thumbs"); t.innerHTML = "";
+    state.items.forEach(function (x, i) {
+      var b = document.createElement("button");
+      b.type = "button"; b.setAttribute("aria-label", "Fotka " + (i + 1));
+      if (i === state.current) b.setAttribute("aria-current", "true");
+      var im = document.createElement("img"); im.src = x.after || x.before; im.alt = "";
+      b.appendChild(im);
+      var label = { busy: "…", done: "✓", error: "!" }[x.status];
+      if (label) { var s = document.createElement("span"); s.className = "state"; s.textContent = label; b.appendChild(s); }
+      b.addEventListener("click", function () { state.current = i; render(); });
+      t.appendChild(b);
+    });
+
+    var pending = state.items.filter(function (x) { return x.status !== "done"; }).length;
+    $("go").disabled = n === 0 || state.busy;
+    $("go").textContent = state.busy ? "Pracuji…" : n === 0 ? "Upravit fotky" : pending ? "Upravit " + pending + (pending === 1 ? " fotku" : pending < 5 ? " fotky" : " fotek") : "Upravit vše znovu";
+
+    $("resultWrap").hidden = !it;
+    if (it) {
+      $("imgBefore").src = it.before;
+      $("imgAfter").src = it.after || it.before;
+      $("compare").classList.toggle("busy", it.status === "busy");
+      $("save").disabled = !it.after;
+      $("redo").disabled = state.busy;
+      $("redo").textContent = it.after ? "Zkusit znovu" : "Upravit tuto";
+      showError(it.status === "error" ? it.error : "");
+    }
+  }
+  render();
+})();
+</script>
+</body>
+</html>
